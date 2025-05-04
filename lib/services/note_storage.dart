@@ -1,4 +1,3 @@
-
 import 'package:hive/hive.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/note.dart';
@@ -6,7 +5,7 @@ import '../models/note.dart';
 class NoteStorage {
   static const _boxName = 'secureNotesBox';
   static const _keyName = 'hive_encryption_key';
-  static const _secureStorage = FlutterSecureStorage();
+  static final _secureStorage = FlutterSecureStorage();
 
   static Future<Box<Note>> openEncryptedBox() async {
     var containsKey = await _secureStorage.containsKey(key: _keyName);

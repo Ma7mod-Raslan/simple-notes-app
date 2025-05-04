@@ -6,7 +6,8 @@ import 'models/note.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  Hive.registerAdapter(NoteAdapter());
+  Hive.registerAdapter(NoteAdapter()); // <- Important!
+
   runApp(const SimpleNotesApp());
 }
 
