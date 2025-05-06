@@ -38,7 +38,7 @@ class NotesHomePage extends StatelessWidget {
       body: const Center(child: Text('Welcome to your Notes App!')),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // سيتم تنفيذ إضافة ملاحظة جديدة هنا لاحقًا
+
         },
         child: const Icon(Icons.add),
       ),
