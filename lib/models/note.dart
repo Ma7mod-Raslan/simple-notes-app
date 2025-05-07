@@ -30,3 +30,24 @@ class Note extends HiveObject {
     required this.updatedAt,
   });
 }
+
+// Sample data for development/demo use
+List<Note> sampleNotes = [
+  Note(
+    id: '0',
+    title: 'Note1',
+    content: 'Content of Note[1]\nRepeated multiple times.',
+    tags: ['demo'],
+    createdAt: DateTime(2022, 1, 1, 10, 5),
+    updatedAt: DateTime(2022, 1, 1, 10, 5),
+  ),
+  Note(
+    id: '1',
+    title: 'Note2',
+    content: 'Content of Note[2]',
+    tags: ['demo'],
+    createdAt: DateTime(2022, 1, 2, 12, 0),
+    updatedAt: DateTime(2022, 1, 2, 12, 0),
+  ),
+  // Add other notes similarly...
+];
