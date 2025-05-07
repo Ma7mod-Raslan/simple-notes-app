@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
-import '../models/note.dart';
+import 'package:intl/intl.dart';
+import 'package:simple_notes_app/models/note.dart';
+import 'package:uuid/uuid.dart';
 
 class EditScreen extends StatefulWidget {
   final Note? note;
@@ -11,18 +12,16 @@ class EditScreen extends StatefulWidget {
 }
 
 class _EditScreenState extends State<EditScreen> {
-  TextEditingController _titleController = TextEditingController();
-  TextEditingController _contentController = TextEditingController();
+  late final TextEditingController _titleController;
+  late final TextEditingController _contentController;
+  DateTime? _reminderTime;
 
   @override
   void initState() {
-    // TODO: implement initState
-    if (widget.note != null) {
-      _titleController = TextEditingController(text: widget.note!.title);
-      _contentController = TextEditingController(text: widget.note!.content);
-    }
-
     super.initState();
+    _titleController = TextEditingController(text: widget.note?.title ?? '');
+    _contentController = TextEditingController(text: widget.note?.content ?? '');
+    _reminderTime = widget.note?.reminderTime;
   }
 
   @override
@@ -37,9 +36,7 @@ class _EditScreenState extends State<EditScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   padding: const EdgeInsets.all(0),
                   icon: Container(
                     width: 40,
@@ -54,6 +51,12 @@ class _EditScreenState extends State<EditScreen> {
                     ),
                   ),
                 ),
+                if (_reminderTime != null)
+                  Chip(
+                    label: Text(DateFormat('h:mm a').format(_reminderTime!)),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () => setState(() => _reminderTime = null),
+                  ),
               ],
             ),
             Expanded(
@@ -64,7 +67,7 @@ class _EditScreenState extends State<EditScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 30),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      hintText: 'Title of your note',
+                      hintText: 'Title',
                       hintStyle: TextStyle(color: Colors.grey, fontSize: 30),
                     ),
                   ),
@@ -74,7 +77,7 @@ class _EditScreenState extends State<EditScreen> {
                     maxLines: null,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      hintText: 'Type your note here',
+                      hintText: 'Content',
                       hintStyle: TextStyle(color: Colors.grey),
                     ),
                   ),
@@ -84,15 +87,50 @@ class _EditScreenState extends State<EditScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pop(context, [
-            _titleController.text,
-            _contentController.text,
-          ]);
-        },
-        backgroundColor: Colors.grey.shade800,
-        child: const Icon(Icons.save, color: Colors.white),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'reminder',
+            onPressed: () async {
+              final time = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+              if (time != null) {
+                setState(() {
+                  _reminderTime = DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                    time.hour,
+                    time.minute,
+                  );
+                });
+              }
+            },
+            backgroundColor: Colors.grey.shade800,
+            child: const Icon(Icons.notifications, color: Colors.white),
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton(
+            heroTag: 'save',
+            onPressed: () {
+              final newNote = Note(
+                id: widget.note?.id ?? const Uuid().v4(),
+                title: _titleController.text,
+                content: _contentController.text,
+                tags: widget.note?.tags ?? [],
+                createdAt: widget.note?.createdAt ?? DateTime.now(),
+                updatedAt: DateTime.now(),
+                reminderTime: _reminderTime,
+              );
+              Navigator.pop(context, newNote);
+            },
+            backgroundColor: Colors.grey.shade800,
+            child: const Icon(Icons.save, color: Colors.white),
+          ),
+        ],
       ),
     );
   }

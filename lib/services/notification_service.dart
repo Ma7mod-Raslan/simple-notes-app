@@ -2,76 +2,67 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:rxdart/rxdart.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-
+import '../models/note.dart';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
+  FlutterLocalNotificationsPlugin();
   static final BehaviorSubject<String?> selectNotificationSubject =
-      BehaviorSubject<String?>();
+  BehaviorSubject<String?>();
 
   static Future<void> initialize() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('simple_notes_app'); 
+    AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    InitializationSettings(android: initializationSettingsAndroid);
 
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) async {
-      if (response.payload != null) {
+    await _notificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (response) {
         selectNotificationSubject.add(response.payload);
-      }
-    });
+      },
+    );
 
-    // Initialize time zone for scheduling
     tz.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Africa/Cairo')); 
   }
 
   static Future<void> requestPermissions() async {
-    await _flutterLocalNotificationsPlugin
+    await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
   }
 
-  static Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime scheduledTime,
-    String? payload,
-  }) async {
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledTime, tz.local),
+  static Future<void> scheduleNoteReminder(Note note) async {
+    if (note.reminderTime == null) return;
+
+    await _notificationsPlugin.zonedSchedule(
+      note.id.hashCode,
+      'Reminder: ${note.title}',
+      note.content,
+      tz.TZDateTime.from(note.reminderTime!, tz.local),
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'id', 
-          'name', 
-          channelDescription: 'description', 
+          'note_reminders',
+          'Note Reminders',
+          channelDescription: 'Reminders for your notes',
           importance: Importance.high,
           priority: Priority.high,
-          ticker: 'ticker',
         ),
       ),
       androidAllowWhileIdle: true,
       uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // For daily/weekly repeats, adjust this
-      payload: payload,
+      UILocalNotificationDateInterpretation.absoluteTime,
+      payload: note.id,
     );
   }
 
-  static void cancelNotification(int id) async {
-    await _flutterLocalNotificationsPlugin.cancel(id);
+  static Future<void> cancelNotification(int id) async {
+    await _notificationsPlugin.cancel(id);
   }
 
-  static void cancelAllNotifications() async {
-    await _flutterLocalNotificationsPlugin.cancelAll();
+  static Future<void> cancelAllNotifications() async {
+    await _notificationsPlugin.cancelAll();
   }
 }

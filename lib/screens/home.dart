@@ -1,8 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../constants/colors.dart';
-import '../models/note.dart';
+import 'package:provider/provider.dart';
+import 'package:simple_notes_app/constants/colors.dart';
+import 'package:simple_notes_app/models/note.dart';
+import 'package:simple_notes_app/provider/search_state.dart';
+import 'package:simple_notes_app/search/search_widget.dart';
+import 'package:simple_notes_app/services/NoteService.dart';
 import 'edit.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,47 +17,26 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Note> resultOfSearchedNotes = [];
-
   @override
   void initState() {
     super.initState();
-    resultOfSearchedNotes = sampleNotes;
-  }
-
-  void searchInNoteByText(String searchText) {
-    setState(() {
-      resultOfSearchedNotes = sampleNotes.where((note) {
-        final titleLower = note.title.toLowerCase();
-        final contentLower = note.content.toLowerCase();
-        final searchLower = searchText.toLowerCase();
-        return titleLower.contains(searchLower) || contentLower.contains(searchLower);
-      }).toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshNotes();
     });
   }
 
-  getRandomColor() {
+  Future<void> _refreshNotes() async {
+    await context.read<SearchState>().loadNotes(context.read<NoteService>());
+  }
+
+  Color getRandomColor() {
     Random random = Random();
     return backgroundColors[random.nextInt(backgroundColors.length)];
-  }
-
-  void deleteNote(int index) {
-    setState(() {
-      sampleNotes.remove(resultOfSearchedNotes[index]);
-      resultOfSearchedNotes.removeAt(index);
-    });
-  }
-
-  List<Note> sortNotesByupdatedAt(List<Note> notes) {
-    List<Note> sortedNotes = List.from(notes);
-    sortedNotes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    return sortedNotes;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade900,
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Column(
@@ -61,19 +44,19 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Spacer(),
-                Text(
-                  "OurTeamName",
+                const Spacer(),
+                const Text(
+                  "Note Ninjas",
                   style: TextStyle(color: Colors.white, fontSize: 30),
                 ),
-                Spacer(),
+                const Spacer(),
                 IconButton(
                   onPressed: () {
-                    setState(() {
-                      resultOfSearchedNotes = sortNotesByupdatedAt(
-                        resultOfSearchedNotes,
-                      );
-                    });
+                    context.read<SearchState>().sortNotes();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Notes sorted by last updated')),
+                    );
                   },
                   icon: Container(
                     width: 40,
@@ -82,131 +65,35 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey.shade800,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.sort, color: Colors.white),
+                    child: const Icon(Icons.sort, color: Colors.white),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 15),
-            TextField(
-              onChanged: (value) {
-                searchInNoteByText(value);
-              },
-              style: TextStyle(color: Colors.white, fontSize: 17),
-              decoration: InputDecoration(
-                contentPadding: EdgeInsets.symmetric(vertical: 15),
-                prefixIcon: Icon(Icons.search, color: Colors.grey),
-                hintText: "Search your notes by any word",
-                hintStyle: TextStyle(color: Colors.grey),
-                fillColor: Colors.grey.shade800,
-                filled: true,
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.transparent),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.transparent),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
+            const SizedBox(height: 15),
+            const SearchWidget(), // Updated to use the self-contained version
+            const SizedBox(height: 20),
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.only(top: 30),
-                itemCount: resultOfSearchedNotes.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    margin: EdgeInsets.only(bottom: 25),
-                    color: getRandomColor(),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: ListTile(
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (BuildContext context) => EditScreen(
-                                note: resultOfSearchedNotes[index],
-                              ),
-                            ),
-                          );
-                          if (result != null) {
-                            setState(() {
-                              int originalIndex = sampleNotes.indexOf(
-                                resultOfSearchedNotes[index],
-                              );
-
-                              Note updatedNote = Note(
-                                id: result[0],
-                                title: result[1],
-                                content: result[2],
-                                tags: result[3],
-                                createdAt: resultOfSearchedNotes[index].createdAt,
-                                updatedAt: DateTime.now(),
-                              );
-
-                              sampleNotes[originalIndex] = updatedNote;
-                              resultOfSearchedNotes[index] = updatedNote;
-                            });
-                          }
-                        },
-                        title: RichText(
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                          text: TextSpan(
-                            text: '${resultOfSearchedNotes[index].title} \n',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              height: 1.5,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: resultOfSearchedNotes[index].content,
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.normal,
-                                  fontSize: 14,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Created at : ${DateFormat('EEE MMM d, yyyy h:mm a').format(resultOfSearchedNotes[index].createdAt)}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                              Text(
-                                'Edited at : ${DateFormat('EEE MMM d, yyyy h:mm a').format(resultOfSearchedNotes[index].updatedAt)}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        trailing: IconButton(
-                          onPressed: () {
-                            deleteNote(index);
-                          },
-                          icon: Icon(Icons.delete),
-                        ),
+              child: Consumer<SearchState>(
+                builder: (context, state, _) {
+                  if (state.filteredNotes.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No notes found',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: _refreshNotes,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(top: 30),
+                      itemCount: state.filteredNotes.length,
+                      itemBuilder: (context, index) {
+                        final note = state.filteredNotes[index];
+                        return _buildNoteCard(context, note, state);
+                      },
                     ),
                   );
                 },
@@ -220,29 +107,136 @@ class _HomeScreenState extends State<HomeScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (BuildContext context) => const EditScreen(),
+              builder: (context) => const EditScreen(),
             ),
           );
-
           if (result != null) {
-            setState(() {
-              sampleNotes.add(
-                Note(
-                  id: result[0],
-                  title: result[1],
-                  content: result[2],
-                  tags: result[3],
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ),
-              );
-              resultOfSearchedNotes = sampleNotes;
-            });
+            await context.read<NoteService>().addNote(result);
+            await _refreshNotes();
           }
         },
         elevation: 10,
         backgroundColor: Colors.grey.shade800,
         child: const Icon(Icons.add, size: 38, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildNoteCard(BuildContext context, Note note, SearchState state) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 25),
+      color: getRandomColor(),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ListTile(
+          onTap: () async {
+            final updatedNote = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditScreen(note: note),
+              ),
+            );
+            if (updatedNote != null) {
+              await context.read<NoteService>().updateNote(updatedNote);
+              await _refreshNotes();
+            }
+          },
+          title: RichText(
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
+              text: '${note.title}\n',
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                height: 1.5,
+              ),
+              children: [
+                TextSpan(
+                  text: note.content,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.normal,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (note.tags.isNotEmpty)
+                  Wrap(
+                    spacing: 4,
+                    children: note.tags.map((tag) =>
+                        Chip(
+                          label: Text(tag),
+                          backgroundColor: Colors.black.withOpacity(0.1),
+                        )).toList(),
+                  ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Created: ${DateFormat('MMM d, yyyy').format(
+                          note.createdAt)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    Text(
+                      'Edited: ${DateFormat('MMM d, yyyy').format(
+                          note.updatedAt)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          trailing: IconButton(
+            onPressed: () async {
+              final shouldDelete = await showDialog(
+                context: context,
+                builder: (context) =>
+                    AlertDialog(
+                      title: const Text('Delete Note'),
+                      content: const Text(
+                          'Are you sure you want to delete this note?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+              );
+
+              if (shouldDelete == true) {
+                await context.read<NoteService>().deleteNote(note.id);
+                await _refreshNotes();
+              }
+            },
+            icon: const Icon(Icons.delete),
+          ),
+        ),
       ),
     );
   }

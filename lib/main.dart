@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'models/note.dart';
-import 'services/notification_service.dart';
+import 'package:provider/provider.dart';
+import 'package:simple_notes_app/models/note.dart';
+import 'package:simple_notes_app/provider/search_state.dart';
+import 'package:simple_notes_app/screens/home.dart';
+import 'package:simple_notes_app/services/NoteService.dart';
+import 'package:simple_notes_app/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,10 +13,11 @@ void main() async {
   // Initialize Hive
   await Hive.initFlutter();
   Hive.registerAdapter(NoteAdapter());
+  await Hive.openBox<Note>('notesBox');
 
   // Initialize Notifications
   await NotificationService.initialize();
-  NotificationService.requestPermissions();
+  await NotificationService.requestPermissions();
 
   runApp(const SimpleNotesApp());
 }
@@ -22,54 +27,19 @@ class SimpleNotesApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Simple Notes App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const NotesHomePage(),
-    );
-  }
-}
-
-class NotesHomePage extends StatelessWidget {
-  const NotesHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Simple Notes App')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Welcome to your Notes & Reminders!'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                DateTime now = DateTime.now().add(const Duration(seconds: 5));
-                await NotificationService.scheduleNotification(
-                  id: 0,
-                  title: 'Test Reminder',
-                  body: 'This is a test notification!',
-                  scheduledTime: now,
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Test reminder scheduled!')),
-                );
-              },
-              child: const Text('Schedule Test Reminder'),
-            ),
-          ],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SearchState()),
+        Provider(create: (_) => NoteService()),
+        Provider(create: (_) => NotificationService()),
+      ],
+      child: MaterialApp(
+        title: 'Simple Notes App',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: Colors.grey.shade900,
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Add note functionality here
-        },
-        child: const Icon(Icons.add),
+        home: const HomeScreen(),
       ),
     );
   }
